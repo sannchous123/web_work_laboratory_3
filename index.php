@@ -4,8 +4,8 @@ session_start();
 
 
 try {
-    $user = 'ваш_логин'; 
-    $pass = 'ваш_пароль';
+    $user = 'u82184'; 
+    $pass = '6010664';
     $db = new PDO('mysql:host=localhost;dbname=ваша_бд', $user, $pass, [
         PDO::ATTR_PERSISTENT => true, 
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
