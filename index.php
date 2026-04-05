@@ -1,36 +1,90 @@
 <?php
 session_start();
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
 
-// Настройки подключения к БД (ЗАМЕНИТЕ НА СВОИ!)
+
 $db_host = 'localhost';
-$db_name = 'u82184';  // замените на имя вашей БД
-$db_user = 'u82184';  // замените на вашего пользователя
-$db_pass = '6010664';      // замените на ваш пароль
+$db_name = 'u82184';        
+$db_user = 'u82184';        
+$db_pass = '6010664'; 
 
-// Подключаемся к БД для получения списка языков
+
+$languages = [];
+$error_message = '';
+
 try {
     $pdo = new PDO("mysql:host=$db_host;dbname=$db_name;charset=utf8", $db_user, $db_pass);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     
+
+    $tables_exist = $pdo->query("SHOW TABLES LIKE 'programming_languages'")->rowCount() > 0;
+    
+    if (!$tables_exist) {
+       
+        $pdo->exec("
+            CREATE TABLE IF NOT EXISTS programming_languages (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                language_name VARCHAR(50) NOT NULL UNIQUE
+            );
+            
+            INSERT INTO programming_languages (language_name) VALUES 
+            ('Pascal'), ('C'), ('C++'), ('JavaScript'), ('PHP'), 
+            ('Python'), ('Java'), ('Haskell'), ('Clojure'), 
+            ('Prolog'), ('Scala'), ('Go');
+            
+            CREATE TABLE IF NOT EXISTS applications (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                full_name VARCHAR(150) NOT NULL,
+                phone VARCHAR(20) NOT NULL,
+                email VARCHAR(100) NOT NULL,
+                birth_date DATE NOT NULL,
+                gender ENUM('male', 'female', 'other') NOT NULL,
+                biography TEXT,
+                agreed_to_contract TINYINT(1) DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+            
+            CREATE TABLE IF NOT EXISTS application_languages (
+                application_id INT UNSIGNED NOT NULL,
+                language_id INT UNSIGNED NOT NULL,
+                PRIMARY KEY (application_id, language_id),
+                FOREIGN KEY (application_id) REFERENCES applications(id) ON DELETE CASCADE,
+                FOREIGN KEY (language_id) REFERENCES programming_languages(id) ON DELETE CASCADE
+            );
+        ");
+    }
+    
+
     $stmt = $pdo->query("SELECT id, language_name FROM programming_languages ORDER BY language_name");
     $languages = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
 } catch(PDOException $e) {
-    $error_message = "Ошибка БД: " . $e->getMessage();
-    $languages = [];
+    $error_message = "Ошибка подключения к БД: " . $e->getMessage();
+    
+    $languages = [
+        ['id' => 1, 'language_name' => 'Pascal'],
+        ['id' => 2, 'language_name' => 'C'],
+        ['id' => 3, 'language_name' => 'C++'],
+        ['id' => 4, 'language_name' => 'JavaScript'],
+        ['id' => 5, 'language_name' => 'PHP'],
+        ['id' => 6, 'language_name' => 'Python'],
+        ['id' => 7, 'language_name' => 'Java'],
+        ['id' => 8, 'language_name' => 'Haskell'],
+        ['id' => 9, 'language_name' => 'Clojure'],
+        ['id' => 10, 'language_name' => 'Prolog'],
+        ['id' => 11, 'language_name' => 'Scala'],
+        ['id' => 12, 'language_name' => 'Go'],
+    ];
 }
 ?>
 <!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Анкета разработчика</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -51,16 +105,8 @@ try {
             padding: 30px;
             text-align: center;
         }
-        .header h1 {
-            font-size: 28px;
-            margin-bottom: 10px;
-        }
-        .form-content {
-            padding: 40px;
-        }
-        .form-group {
-            margin-bottom: 25px;
-        }
+        .form-content { padding: 40px; }
+        .form-group { margin-bottom: 25px; }
         label {
             display: block;
             margin-bottom: 8px;
@@ -68,10 +114,7 @@ try {
             color: #333;
             font-size: 14px;
         }
-        .required:after {
-            content: " *";
-            color: red;
-        }
+        .required:after { content: " *"; color: red; }
         input[type="text"],
         input[type="tel"],
         input[type="email"],
@@ -83,15 +126,10 @@ try {
             border: 2px solid #e0e0e0;
             border-radius: 8px;
             font-size: 14px;
-            transition: all 0.3s;
-            font-family: inherit;
         }
-        input:focus,
-        select:focus,
-        textarea:focus {
+        input:focus, select:focus, textarea:focus {
             outline: none;
             border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
         }
         .radio-group {
             display: flex;
@@ -103,17 +141,9 @@ try {
             align-items: center;
             gap: 8px;
         }
-        .radio-option input[type="radio"] {
-            width: auto;
-            margin: 0;
-        }
-        select[multiple] {
-            height: 150px;
-        }
-        textarea {
-            resize: vertical;
-            min-height: 100px;
-        }
+        .radio-option input[type="radio"] { width: auto; margin: 0; }
+        select[multiple] { height: 150px; }
+        textarea { resize: vertical; min-height: 100px; }
         .contract-checkbox {
             display: flex;
             align-items: center;
@@ -123,14 +153,7 @@ try {
             background: #f8f9fa;
             border-radius: 8px;
         }
-        .contract-checkbox input {
-            width: auto;
-            margin: 0;
-        }
-        .contract-checkbox label {
-            margin: 0;
-            cursor: pointer;
-        }
+        .contract-checkbox input { width: auto; margin: 0; }
         .btn-submit {
             width: 100%;
             padding: 14px;
@@ -141,11 +164,8 @@ try {
             font-size: 16px;
             font-weight: 600;
             cursor: pointer;
-            transition: transform 0.2s;
         }
-        .btn-submit:hover {
-            transform: translateY(-2px);
-        }
+        .btn-submit:hover { opacity: 0.9; }
         .alert {
             padding: 15px;
             border-radius: 8px;
@@ -161,18 +181,9 @@ try {
             color: #721c24;
             border: 1px solid #f5c6cb;
         }
-        .error-list {
-            margin-top: 10px;
-            padding-left: 20px;
-        }
         @media (max-width: 600px) {
-            .form-content {
-                padding: 20px;
-            }
-            .radio-group {
-                flex-direction: column;
-                gap: 10px;
-            }
+            .form-content { padding: 20px; }
+            .radio-group { flex-direction: column; gap: 10px; }
         }
     </style>
 </head>
@@ -193,8 +204,8 @@ try {
             
             <?php if (isset($_SESSION['errors']) && !empty($_SESSION['errors'])): ?>
                 <div class="alert alert-error">
-                    <strong>❌ Пожалуйста, исправьте следующие ошибки:</strong>
-                    <ul class="error-list">
+                    <strong>❌ Ошибки:</strong>
+                    <ul style="margin-top: 10px; padding-left: 20px;">
                         <?php foreach ($_SESSION['errors'] as $error): ?>
                             <li><?= htmlspecialchars($error) ?></li>
                         <?php endforeach; ?>
@@ -203,10 +214,9 @@ try {
                 <?php unset($_SESSION['errors']); ?>
             <?php endif; ?>
             
-            <?php if (isset($error_message)): ?>
+            <?php if (!empty($error_message)): ?>
                 <div class="alert alert-error">
-                    <strong>⚠️ Ошибка базы данных:</strong><br>
-                    <?= htmlspecialchars($error_message) ?>
+                    ⚠️ <?= htmlspecialchars($error_message) ?>
                 </div>
             <?php endif; ?>
             
@@ -216,7 +226,7 @@ try {
                     <input type="text" id="full_name" name="full_name" 
                            value="<?= htmlspecialchars($_SESSION['old']['full_name'] ?? '') ?>"
                            placeholder="Иванов Иван Иванович" required>
-                    <small style="color: #666;">Только буквы, пробелы и дефисы. Максимум 150 символов.</small>
+                    <small style="color: #666; display: block; margin-top: 5px;">Только буквы, пробелы и дефисы. Максимум 150 символов.</small>
                 </div>
                 
                 <div class="form-group">
@@ -243,27 +253,24 @@ try {
                 <div class="form-group">
                     <label class="required">Пол</label>
                     <div class="radio-group">
-                        <div class="radio-option">
-                            <input type="radio" id="male" name="gender" value="male" 
-                                   <?= (($_SESSION['old']['gender'] ?? '') == 'male') ? 'checked' : '' ?>>
-                            <label for="male">Мужской</label>
-                        </div>
-                        <div class="radio-option">
-                            <input type="radio" id="female" name="gender" value="female"
-                                   <?= (($_SESSION['old']['gender'] ?? '') == 'female') ? 'checked' : '' ?>>
-                            <label for="female">Женский</label>
-                        </div>
-                        <div class="radio-option">
-                            <input type="radio" id="other" name="gender" value="other"
-                                   <?= (($_SESSION['old']['gender'] ?? '') == 'other') ? 'checked' : '' ?>>
-                            <label for="other">Другой</label>
-                        </div>
+                        <label class="radio-option">
+                            <input type="radio" name="gender" value="male" 
+                                   <?= (($_SESSION['old']['gender'] ?? '') == 'male') ? 'checked' : '' ?>> Мужской
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="gender" value="female"
+                                   <?= (($_SESSION['old']['gender'] ?? '') == 'female') ? 'checked' : '' ?>> Женский
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="gender" value="other"
+                                   <?= (($_SESSION['old']['gender'] ?? '') == 'other') ? 'checked' : '' ?>> Другой
+                        </label>
                     </div>
                 </div>
                 
                 <div class="form-group">
                     <label class="required">Любимые языки программирования</label>
-                    <select name="languages[]" multiple="multiple" size="6" required>
+                    <select name="languages[]" multiple size="6" required>
                         <?php foreach ($languages as $lang): ?>
                             <option value="<?= $lang['id'] ?>" 
                                 <?= (isset($_SESSION['old']['languages']) && in_array($lang['id'], $_SESSION['old']['languages'])) ? 'selected' : '' ?>>
@@ -271,12 +278,12 @@ try {
                             </option>
                         <?php endforeach; ?>
                     </select>
-                    <small style="color: #666;">Удерживайте Ctrl (Cmd на Mac) для выбора нескольких языков</small>
+                    <small style="color: #666; display: block; margin-top: 5px;">Удерживайте Ctrl (Cmd на Mac) для выбора нескольких языков</small>
                 </div>
                 
                 <div class="form-group">
                     <label for="biography">Биография</label>
-                    <textarea id="biography" name="biography" 
+                    <textarea id="biography" name="biography" rows="4" 
                               placeholder="Расскажите немного о себе..."><?= htmlspecialchars($_SESSION['old']['biography'] ?? '') ?></textarea>
                 </div>
                 
